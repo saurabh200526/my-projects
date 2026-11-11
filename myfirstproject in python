@@ -1,0 +1,118 @@
+"""Time Capsule: write a message to your future self.
+The message stays locked until the date you choose.
+"""
+
+import json
+import os
+from datetime import date, datetime
+
+FILE = "capsules.json"
+
+
+def load_capsules():
+    if not os.path.exists(FILE):
+        return []
+    with open(FILE, "r") as f:
+        return json.load(f)
+
+
+def save_capsules(capsules):
+    with open(FILE, "w") as f:
+        json.dump(capsules, f, indent=2)
+
+
+def ask_date(prompt):
+    """Keep asking until the user types a valid future date (YYYY-MM-DD)."""
+    while True:
+        text = input(prompt).strip()
+        try:
+            chosen = datetime.strptime(text, "%Y-%m-%d").date()
+        except ValueError:
+            print("Please use the format YYYY-MM-DD, e.g. 2026-01-01.")
+            continue
+        if chosen <= date.today():
+            print("Pick a date in the future!")
+            continue
+        return chosen
+
+
+def create_capsule():
+    title = input("Capsule title: ").strip() or "Untitled"
+    message = input("Your message to future you: ").strip()
+    unlock = ask_date("Unlock date (YYYY-MM-DD): ")
+
+    capsules = load_capsules()
+    capsules.append(
+        {
+            "title": title,
+            "message": message,
+            "created": str(date.today()),
+            "unlock": str(unlock),
+        }
+    )
+    save_capsules(capsules)
+    print(f"\nSealed! '{title}' will open on {unlock}.")
+
+
+def list_capsules():
+    capsules = load_capsules()
+    if not capsules:
+        print("\nNo capsules yet. Create one first!")
+        return
+
+    print("\nYour capsules:")
+    for i, c in enumerate(capsules, start=1):
+        unlock = datetime.strptime(c["unlock"], "%Y-%m-%d").date()
+        days_left = (unlock - date.today()).days
+        status = "READY TO OPEN" if days_left <= 0 else f"locked ({days_left} days left)"
+        print(f"  {i}. {c['title']} - {status}")
+
+
+def open_capsule():
+    capsules = load_capsules()
+    if not capsules:
+        print("\nNo capsules yet. Create one first!")
+        return
+
+    list_capsules()
+    choice = input("\nWhich capsule number do you want to open? ").strip()
+    if not choice.isdigit() or not (1 <= int(choice) <= len(capsules)):
+        print("That's not a valid number.")
+        return
+
+    c = capsules[int(choice) - 1]
+    unlock = datetime.strptime(c["unlock"], "%Y-%m-%d").date()
+    days_left = (unlock - date.today()).days
+
+    if days_left > 0:
+        print(f"\nNice try! '{c['title']}' is locked for {days_left} more days.")
+    else:
+        print(f"\n--- {c['title']} ---")
+        print(f"Written on {c['created']}:\n")
+        print(c["message"])
+
+
+def main():
+    while True:
+        print("\n=== TIME CAPSULE ===")
+        print("1. Create a capsule")
+        print("2. List capsules")
+        print("3. Open a capsule")
+        print("4. Quit")
+        choice = input("Choose: ").strip()
+
+        if choice == "1":
+            create_capsule()
+        elif choice == "2":
+            list_capsules()
+        elif choice == "3":
+            open_capsule()
+        elif choice == "4":
+            print("Goodbye!")
+            break
+        else:
+            print("Please choose 1-4.")
+
+
+if __name__ == "__main__":
+    main()
